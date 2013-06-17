@@ -1,0 +1,7 @@
+.metadata
+db-files/*
+RINCreator/bin/
+RINCreator/build/
+RINCreator/dist/
+RINCreator/derby.log
+RINCreator/.settings/
