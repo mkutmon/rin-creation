@@ -8,6 +8,7 @@ import java.util.logging.Logger;
 import uk.co.flamingpenguin.jewel.cli.ArgumentValidationException;
 import uk.co.flamingpenguin.jewel.cli.CliFactory;
 import uk.co.flamingpenguin.jewel.cli.Option;
+import cytargetlinker.conversion.graph.GmlWriter;
 import cytargetlinker.conversion.graph.Graph;
 import cytargetlinker.conversion.graph.XGMMLWriter;
 
@@ -98,6 +99,10 @@ public class ArgsParser {
 		public void write(Graph g, PrintWriter out) throws Exception { XGMMLWriter.write(g, out); }
 	}
 	
+	private static class GML implements GraphWriter {
+		public void write(Graph g, PrintWriter out) throws Exception { GmlWriter.write(g, out); }
+	}
+	
 	/**
 	 * writes xgmml file
 	 * @param fi
@@ -106,11 +111,17 @@ public class ArgsParser {
 	 * @throws Exception
 	 */
 	public static void convertAndWrite(AFilesIn fi, AFilesOut fo, GraphBuilder gb) throws Exception {
-		GraphWriter writer = new XGMML();
 		File input = fi == null ? null : fi.getInput();
 		File output = fo.isOutput() ? fo.getOutput() : new File(fi.getInput().getAbsolutePath() + ".xgmml");
+		
 		log.info("Converting " + input + " to " + output + "\n");
+		
 		Graph g = gb.buildGraph(input);
+		
+		GraphWriter writer = new XGMML();
+		if(output.getName().endsWith(".gml")) {
+			writer = new GML();
+		}
 		PrintWriter po = new PrintWriter(output);
 		writer.write(g, po);
 		po.close();
