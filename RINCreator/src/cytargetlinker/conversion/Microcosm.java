@@ -79,7 +79,7 @@ public class Microcosm {
 	private int countGenes = 0;
 	private int countMiRNAs = 0;
 	
-	private Map<String, MiRNANode> miRNAs;
+	private Map<String, Node> miRNAs;
 	private Map<String, GeneNode> genes;
 	private Map<String, MTI> interactions;
 	
@@ -93,7 +93,7 @@ public class Microcosm {
 		foundConnections = new ArrayList<String>();
 		genesNotFound = new ArrayList<String>();
 		
-		miRNAs = new HashMap<String, MiRNANode>();
+		miRNAs = new HashMap<String, Node>();
 		genes = new HashMap<String, GeneNode>();
 		interactions = new HashMap<String, MTI>();
 		nodesNotFound = new ArrayList<String>();
@@ -199,9 +199,28 @@ public class Microcosm {
 	}
 	
 	private void addEdge(String gene, String mirna, String score, String pValue) {
-		if(edges.containsKey(gene)) {
-			if(!edges.get(gene).contains(mirna)) {
-				Edge e = graph.addEdge("" + countEdge, graph.getNode(mirna),graph.getNode(gene));
+		if(miRNAs.containsKey(mirna)) {
+			if(edges.containsKey(gene)) {
+				if(!edges.get(gene).contains(mirna)) {
+					Edge e = graph.addEdge("" + countEdge, miRNAs.get(mirna),graph.getNode(gene));
+					e.setAttribute("datasource", "Microcosm Targets version 5");
+					e.setAttribute("interactionType", "predicted MTI");
+					try {
+						Double d = Double.parseDouble(score);
+						e.setAttribute("score", d.toString());
+						Double pvalue = Double.parseDouble(pValue);
+						e.setAttribute("pvalue", pvalue.toString());
+					} catch(NumberFormatException ex) {
+						e.setAttribute("score", "");
+						e.setAttribute("pvalue", "");	
+					}
+					
+					edges.get(gene).add(mirna);
+					foundConnections.add(gene + "\t" + mirna);
+					countEdge++;
+				}
+			} else {
+				Edge e = graph.addEdge("" + countEdge, miRNAs.get(mirna),graph.getNode(gene));
 				e.setAttribute("datasource", "Microcosm Targets version 5");
 				e.setAttribute("interactionType", "predicted MTI");
 				try {
@@ -211,31 +230,16 @@ public class Microcosm {
 					e.setAttribute("pvalue", pvalue.toString());
 				} catch(NumberFormatException ex) {
 					e.setAttribute("score", "");
-					e.setAttribute("pvalue", "");	
+					e.setAttribute("pvalue", "");
 				}
-				
-				edges.get(gene).add(mirna);
+				List<String> list = new ArrayList<String>();
+				list.add(mirna);
 				foundConnections.add(gene + "\t" + mirna);
+				edges.put(gene, list);
 				countEdge++;
 			}
 		} else {
-			Edge e = graph.addEdge("" + countEdge, graph.getNode(mirna),graph.getNode(gene));
-			e.setAttribute("datasource", "Microcosm Targets version 5");
-			e.setAttribute("interactionType", "predicted MTI");
-			try {
-				Double d = Double.parseDouble(score);
-				e.setAttribute("score", d.toString());
-				Double pvalue = Double.parseDouble(pValue);
-				e.setAttribute("pvalue", pvalue.toString());
-			} catch(NumberFormatException ex) {
-				e.setAttribute("score", "");
-				e.setAttribute("pvalue", "");
-			}
-			List<String> list = new ArrayList<String>();
-			list.add(mirna);
-			foundConnections.add(gene + "\t" + mirna);
-			edges.put(gene, list);
-			countEdge++;
+			log.warning("Edge " + gene + " -- " + mirna + " excluded, because miRNA couldn't be mapped.");
 		}
 	}
 	
@@ -326,49 +330,19 @@ public class Microcosm {
 	}
 
 	private void createMiRNANode(String miRNA) {
-		String type = "microRNA";
 		String organism = pargs.getOrganism();
 		
-		if(graph.getNode(miRNA) == null) {
-			String mimat = "";
-			String identifiers = "[" + miRNA;
-			Xref xrefIn = new Xref(miRNA, DataSource.getBySystemCode("Mb"));
-			
-			if(mapping) {
-				try {
-					Set<Xref> result = gdb.mapID(xrefIn, DataSource.getBySystemCode("Mb"));
-					Set<Xref> result2 = gdb.mapID(xrefIn, DataSource.getBySystemCode("Mbm"));
-					
-					List<String> list = new ArrayList<String>();
-					list.add(miRNA);
-					for(Xref x : result) {
-						if(!list.contains(x.getId())) {
-							list.add(x.getId());
-							identifiers = identifiers + "," + x.getId();
-						}
-					}
-					for(Xref x : result2) {
-						if(!list.contains(x.getId())) {
-							list.add(x.getId());
-							if(x.getId().startsWith("MIMAT")) {
-								mimat = x.getId();
-							}
-							identifiers = identifiers + "," + x.getId();
-						}
-					}
-				} catch (IDMapperException e) {
-					// could not be mapped
-				}
+		if(!miRNAs.containsKey(miRNA)) {
+			MiRNANode mirnaNode = MiRNANode.createMiRNANode(miRNA, gdb, DataSource.getBySystemCode("Mb"));
+			if(mirnaNode != null) {
+				Node node = mirnaNode.getNode(graph);
+				node.appendAttribute("miRBaseAccession", mirnaNode.getId());
+				node.appendAttribute("organism", organism);
+				countMiRNAs++;
+				miRNAs.put(miRNA, node);
+			} else {
+				log.warning("miRNA node for " + miRNA + " not found! Skipping this miRNA.");
 			}
-			identifiers = identifiers + "]";
-			
-			Node node = graph.addNode(miRNA);
-			node.appendAttribute("identifiers", identifiers);
-			node.appendAttribute("label", miRNA);
-			node.appendAttribute("miRBaseAccession", mimat);
-			node.appendAttribute("biologicalType", type);
-			node.appendAttribute("organism", organism);
-			countMiRNAs++;
 		}
 	}
 	

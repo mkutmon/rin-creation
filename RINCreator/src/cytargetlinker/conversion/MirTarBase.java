@@ -16,17 +16,18 @@ import org.bridgedb.IDMapperException;
 import org.bridgedb.IDMapperStack;
 import org.bridgedb.Xref;
 
+import cytargetlinker.conversion.data.MiRNANode;
 import cytargetlinker.conversion.graph.Graph;
 import cytargetlinker.conversion.graph.Graph.Edge;
 import cytargetlinker.conversion.graph.Graph.Node;
 import cytargetlinker.conversion.utils.ArgsParser;
-import cytargetlinker.conversion.utils.CommonAttributes;
-import cytargetlinker.conversion.utils.Utils;
 import cytargetlinker.conversion.utils.ArgsParser.AFilesAttributes;
 import cytargetlinker.conversion.utils.ArgsParser.AFilesIn;
 import cytargetlinker.conversion.utils.ArgsParser.AFilesOut;
 import cytargetlinker.conversion.utils.ArgsParser.AHelp;
 import cytargetlinker.conversion.utils.ArgsParser.GraphBuilder;
+import cytargetlinker.conversion.utils.CommonAttributes;
+import cytargetlinker.conversion.utils.Utils;
 
 /**
  * Converts miRNA target text files from MiRTarBase to a XGMML or GML network.
@@ -134,7 +135,7 @@ public class MirTarBase {
 		for (String[] r : rows) {
 			String geneNode = createGeneNode(r);
 			String miRNANode = createMiRNANode(r);
-			addEdge(geneNode, miRNANode, r);	
+			if(geneNode != null && miRNANode != null) addEdge(geneNode, miRNANode, r);	
 		}
 
 		log.info(foundConnections.size() + " interactions have been found.\n" + countGenes + " gene nodes.\n" + countMiRNAs + " miRNA nodes.\n");
@@ -184,52 +185,20 @@ public class MirTarBase {
 	
 	private String createMiRNANode(String[] r) {
 		String miRNA = r[index.get("miRNA")];
-		String type = "microRNA";
 		String organism = r[index.get("Species (miRNA)")];
-		
-		if(graph.getNode(miRNA) == null) {
-			String mimat = "";
-			String identifiers = "[" + miRNA;
-			Xref xrefIn = new Xref(miRNA, DataSource.getBySystemCode("Mb"));
-			
-			if(mapping) {
-				try {
-					Set<Xref> result = gdb.mapID(xrefIn, DataSource.getBySystemCode("Mb"));
-					Set<Xref> result2 = gdb.mapID(xrefIn, DataSource.getBySystemCode("Mbm"));
-					
-					List<String> list = new ArrayList<String>();
-					list.add(miRNA);
-					for(Xref x : result) {
-						if(!list.contains(x.getId())) {
-							list.add(x.getId());
-							identifiers = identifiers + "," + x.getId();
-						}
-					}
-					for(Xref x : result2) {
-						if(!list.contains(x.getId())) {
-							list.add(x.getId());
-							if(x.getId().startsWith("MIMAT")) {
-								mimat = x.getId();
-							}
-							identifiers = identifiers + "," + x.getId();
-						}
-					}
-				} catch (IDMapperException e) {
-					// could not be mapped
-				}
-			}
-			identifiers = identifiers + "]";
-			
-			Node node = graph.addNode(miRNA);
-			node.appendAttribute("identifiers", identifiers);
-			node.appendAttribute("label", miRNA);
-			node.appendAttribute("miRBaseAccession", mimat);
-			node.appendAttribute("biologicalType", type);
+
+		MiRNANode mirnaNode = MiRNANode.createMiRNANode(miRNA, gdb, DataSource.getBySystemCode("Mb"));
+		if(mirnaNode != null) {
+			Node node = mirnaNode.getNode(graph);
+			node.appendAttribute("miRBaseAccession", mirnaNode.getId());
 			node.appendAttribute("organism", organism);
-			countMiRNAs++;
+			countMiRNAs++;			
+			return mirnaNode.getId();
+		} else {
+			log.warning("miRNA node for " + miRNA + " not found! Skipping this miRNA.");
+			return null;
 		}
 		
-		return miRNA;
 	}
 
 	private void addEdge(String gene, String mirna, String[] r) {

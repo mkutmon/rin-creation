@@ -117,6 +117,7 @@ public class ArgsParser {
 		log.info("Converting " + input + " to " + output + "\n");
 		
 		Graph g = gb.buildGraph(input);
+		g.setDirected(true);
 		
 		GraphWriter writer = new XGMML();
 		if(output.getName().endsWith(".gml")) {

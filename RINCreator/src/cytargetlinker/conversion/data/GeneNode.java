@@ -62,6 +62,7 @@ public class GeneNode {
 		node.appendAttribute("label", getLabel());
 		node.appendAttribute("name", getLabel());
 		node.appendAttribute("biologicalType", getBiologicalType());
+		if(entrez.size() > 0) node.appendAttribute("entrezGeneID", entrez.get(0));
 		return node;
 	}
 	
