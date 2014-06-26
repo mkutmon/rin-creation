@@ -11,6 +11,7 @@ import java.util.Map;
  */
 public class Graph extends AttributeHolder {
 	String title = "";
+	boolean directed = false;
 	
 	Map<String, Node> nodes = new HashMap<String, Node>();
 	Map<String, Edge> edges = new HashMap<String, Edge>();
@@ -21,6 +22,14 @@ public class Graph extends AttributeHolder {
 	
 	public String getTitle() {
 		return title;
+	}
+	
+	public boolean isDirected() {
+		return directed;
+	}
+	
+	public void setDirected(boolean directed) {
+		this.directed = directed;
 	}
 	
 	public Node addNode(String id) {

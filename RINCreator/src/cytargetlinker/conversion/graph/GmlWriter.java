@@ -19,6 +19,7 @@ public class GmlWriter {
 		int indent = 0;
 		
 		iout.println("graph [");
+		iout.println("directed\t" + (graph.isDirected() ? 1 : 0));
 		iout.setIndent(++indent);
 
 		//Print nodes and attributes
